@@ -1,1 +1,1215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Conlang Accelerator (Offline)</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f5f7;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #637381;
+      --accent: #2856d9;
+      --border: #d7dbe0;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 20px 28px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 20px;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.1fr);
+      gap: 16px;
+      padding: 16px 24px 32px;
+    }
+    @media (max-width: 1000px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+    }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+    fieldset {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 0 0 14px;
+      padding: 12px;
+    }
+    legend {
+      padding: 0 6px;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .row {
+      display: grid;
+      gap: 12px;
+    }
+    .row.two {
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    button {
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: var(--accent);
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #eef2ff;
+      color: #2a3a7c;
+    }
+    button.ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .output-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .output-table th,
+    .output-table td {
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      vertical-align: top;
+    }
+    .output-table th {
+      background: #f1f3f7;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .ipa {
+      font-family: var(--mono);
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fafbff;
+      font-size: 13px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+    .error {
+      color: #b42318;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+    .success {
+      color: #027a48;
+      font-size: 13px;
+    }
+    .mono-input textarea,
+    .mono-input input[type="text"] {
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Conlang Accelerator (Offline)</h1>
+    <p>Define IPA inventories, phonotactics, constraints, and generate a Swadesh-100 lexicon with deterministic output.</p>
+  </header>
+  <main>
+    <section class="panel">
+      <h2>Inputs</h2>
+      <fieldset>
+        <legend>Language metadata</legend>
+        <div class="row two">
+          <div>
+            <label for="langName">Language name</label>
+            <input id="langName" type="text" placeholder="Example: Talé" />
+          </div>
+          <div>
+            <label for="author">Author</label>
+            <input id="author" type="text" placeholder="Your name" />
+          </div>
+          <div>
+            <label for="seed">Seed (integer)</label>
+            <input id="seed" type="number" placeholder="Auto" />
+          </div>
+        </div>
+      </fieldset>
 
+      <fieldset class="mono-input">
+        <legend>Phoneme inventory (IPA tokens, space-separated)</legend>
+        <label for="consonants">Consonants</label>
+        <textarea id="consonants" placeholder="p t k b d ɡ m n ŋ f v s z ʃ ʒ h ɾ r l j w t͡ʃ d͡ʒ"></textarea>
+        <label for="vowels">Vowels</label>
+        <textarea id="vowels" placeholder="i e a o u ə ɛ ɔ ɑ"></textarea>
+        <div class="hint">Use space-separated IPA tokens for accurate segmentation (e.g., t͡ʃ r).</div>
+      </fieldset>
+
+      <fieldset class="mono-input">
+        <legend>Syllable templates (weighted)</legend>
+        <label for="templates">Templates (TEMPLATE:WEIGHT)</label>
+        <textarea id="templates" placeholder="V:10\nCV:50\nCVC:30\nCCV:10"></textarea>
+        <div class="checkbox">
+          <input id="allowNonListed" type="checkbox" />
+          <label for="allowNonListed">Allow non-listed clusters</label>
+        </div>
+      </fieldset>
+
+      <fieldset class="mono-input">
+        <legend>Weighted clusters (optional)</legend>
+        <label for="onsetClusters">Onset clusters (CLUSTER:WEIGHT)</label>
+        <textarea id="onsetClusters" placeholder="t͡ʃ r:10\nk w:6\np l:4"></textarea>
+        <label for="codaClusters">Coda clusters (CLUSTER:WEIGHT)</label>
+        <textarea id="codaClusters" placeholder="n:12\ns:7\nt:5"></textarea>
+        <div class="hint">Recommend space-separated clusters (e.g., t͡ʃ r). Greedy matching without spaces is best-effort.</div>
+      </fieldset>
+
+      <fieldset class="mono-input">
+        <legend>Constraints (hard)</legend>
+        <label for="forbiddenSeq">Forbidden sequences (one per line)</label>
+        <textarea id="forbiddenSeq" placeholder="w u\nŋ"></textarea>
+        <div class="row two">
+          <div>
+            <label for="forbiddenInitial">Forbidden word-initial tokens</label>
+            <input id="forbiddenInitial" type="text" placeholder="ŋ ʔ" />
+          </div>
+          <div>
+            <label for="forbiddenFinal">Forbidden word-final tokens</label>
+            <input id="forbiddenFinal" type="text" placeholder="h ʔ" />
+          </div>
+        </div>
+        <div class="row two">
+          <div>
+            <label for="minSyll">Min syllables</label>
+            <input id="minSyll" type="number" min="1" max="6" value="1" />
+          </div>
+          <div>
+            <label for="maxSyll">Max syllables</label>
+            <input id="maxSyll" type="number" min="1" max="6" value="2" />
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="mono-input">
+        <legend>Orthography / romanization</legend>
+        <div class="checkbox">
+          <input id="showRoman" type="checkbox" />
+          <label for="showRoman">Show Romanization Column</label>
+        </div>
+        <label for="romanMap">Mapping (IPA_TOKEN = ROMAN)</label>
+        <textarea id="romanMap" placeholder="t͡ʃ = ch\nʃ = sh\nŋ = ng"></textarea>
+      </fieldset>
+
+      <fieldset>
+        <legend>Lexicon generation</legend>
+        <div class="row two">
+          <div>
+            <label for="meaningSet">Meaning list</label>
+            <select id="meaningSet">
+              <option value="swadesh100">Swadesh 100</option>
+            </select>
+          </div>
+          <div>
+            <label for="wordCount">Number of words</label>
+            <input id="wordCount" type="number" min="10" max="200" value="100" />
+          </div>
+        </div>
+        <div class="row two">
+          <div class="checkbox">
+            <input id="allowHomophones" type="checkbox" />
+            <label for="allowHomophones">Allow homophones</label>
+          </div>
+          <div>
+            <label for="minDistance">Minimum edit distance</label>
+            <input id="minDistance" type="number" min="0" max="10" value="2" />
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="mono-input">
+        <legend>Grammar & morphology (lite)</legend>
+        <div class="row two">
+          <div>
+            <label for="wordOrder">Word order</label>
+            <select id="wordOrder">
+              <option value="SOV">SOV</option>
+              <option value="SVO" selected>SVO</option>
+              <option value="VSO">VSO</option>
+              <option value="VOS">VOS</option>
+              <option value="OVS">OVS</option>
+              <option value="OSV">OSV</option>
+            </select>
+          </div>
+          <div>
+            <label for="adpositions">Adpositions</label>
+            <select id="adpositions">
+              <option value="postpositions">Postpositions</option>
+              <option value="prepositions" selected>Prepositions</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+        </div>
+        <div class="row two">
+          <div>
+            <label for="adjPos">Adjective position</label>
+            <select id="adjPos">
+              <option value="before">Before noun</option>
+              <option value="after" selected>After noun</option>
+            </select>
+          </div>
+          <div>
+            <label for="negation">Negation strategy</label>
+            <select id="negation">
+              <option value="particle-before">Particle before verb</option>
+              <option value="particle-after">Particle after verb</option>
+              <option value="prefix">Prefix on verb</option>
+              <option value="suffix">Suffix on verb</option>
+            </select>
+          </div>
+        </div>
+        <div class="row two">
+          <div>
+            <label for="pluralSuffix">Plural suffix tokens</label>
+            <input id="pluralSuffix" type="text" placeholder="i" />
+          </div>
+          <div>
+            <label for="pastSuffix">Past tense suffix tokens</label>
+            <input id="pastSuffix" type="text" placeholder="t a" />
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="controls">
+        <button id="generate">Generate</button>
+        <button id="saveSpec" class="secondary">Save spec</button>
+        <button id="loadSpec" class="secondary">Load spec</button>
+        <button id="reset" class="ghost">Reset defaults</button>
+      </div>
+      <div id="status" class="hint"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Outputs</h2>
+      <div class="controls">
+        <button id="downloadJson" class="secondary">Download JSON</button>
+        <button id="downloadCsv" class="secondary">Download CSV</button>
+      </div>
+      <div id="error" class="error"></div>
+      <div id="outputArea">
+        <table class="output-table" id="lexiconTable"></table>
+        <div class="card" id="grammarSketch"></div>
+        <div class="card" id="diagnostics"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const swadesh100 = [
+      { id: "swadesh100:i", meaning: "I", pos: "pron" },
+      { id: "swadesh100:you", meaning: "you", pos: "pron" },
+      { id: "swadesh100:we", meaning: "we", pos: "pron" },
+      { id: "swadesh100:this", meaning: "this", pos: "det" },
+      { id: "swadesh100:that", meaning: "that", pos: "det" },
+      { id: "swadesh100:who", meaning: "who", pos: "pron" },
+      { id: "swadesh100:what", meaning: "what", pos: "pron" },
+      { id: "swadesh100:not", meaning: "not", pos: "adv" },
+      { id: "swadesh100:all", meaning: "all", pos: "det" },
+      { id: "swadesh100:many", meaning: "many", pos: "det" },
+      { id: "swadesh100:one", meaning: "one", pos: "num" },
+      { id: "swadesh100:two", meaning: "two", pos: "num" },
+      { id: "swadesh100:big", meaning: "big", pos: "adj" },
+      { id: "swadesh100:long", meaning: "long", pos: "adj" },
+      { id: "swadesh100:small", meaning: "small", pos: "adj" },
+      { id: "swadesh100:woman", meaning: "woman", pos: "n" },
+      { id: "swadesh100:man", meaning: "man", pos: "n" },
+      { id: "swadesh100:person", meaning: "person", pos: "n" },
+      { id: "swadesh100:fish", meaning: "fish", pos: "n" },
+      { id: "swadesh100:bird", meaning: "bird", pos: "n" },
+      { id: "swadesh100:dog", meaning: "dog", pos: "n" },
+      { id: "swadesh100:louse", meaning: "louse", pos: "n" },
+      { id: "swadesh100:tree", meaning: "tree", pos: "n" },
+      { id: "swadesh100:seed", meaning: "seed", pos: "n" },
+      { id: "swadesh100:leaf", meaning: "leaf", pos: "n" },
+      { id: "swadesh100:root", meaning: "root", pos: "n" },
+      { id: "swadesh100:bark", meaning: "bark", pos: "n" },
+      { id: "swadesh100:skin", meaning: "skin", pos: "n" },
+      { id: "swadesh100:flesh", meaning: "flesh", pos: "n" },
+      { id: "swadesh100:blood", meaning: "blood", pos: "n" },
+      { id: "swadesh100:bone", meaning: "bone", pos: "n" },
+      { id: "swadesh100:fat", meaning: "fat", pos: "n" },
+      { id: "swadesh100:egg", meaning: "egg", pos: "n" },
+      { id: "swadesh100:horn", meaning: "horn", pos: "n" },
+      { id: "swadesh100:tail", meaning: "tail", pos: "n" },
+      { id: "swadesh100:feather", meaning: "feather", pos: "n" },
+      { id: "swadesh100:hair", meaning: "hair", pos: "n" },
+      { id: "swadesh100:head", meaning: "head", pos: "n" },
+      { id: "swadesh100:ear", meaning: "ear", pos: "n" },
+      { id: "swadesh100:eye", meaning: "eye", pos: "n" },
+      { id: "swadesh100:nose", meaning: "nose", pos: "n" },
+      { id: "swadesh100:mouth", meaning: "mouth", pos: "n" },
+      { id: "swadesh100:tooth", meaning: "tooth", pos: "n" },
+      { id: "swadesh100:tongue", meaning: "tongue", pos: "n" },
+      { id: "swadesh100:claw", meaning: "claw", pos: "n" },
+      { id: "swadesh100:foot", meaning: "foot", pos: "n" },
+      { id: "swadesh100:knee", meaning: "knee", pos: "n" },
+      { id: "swadesh100:hand", meaning: "hand", pos: "n" },
+      { id: "swadesh100:belly", meaning: "belly", pos: "n" },
+      { id: "swadesh100:neck", meaning: "neck", pos: "n" },
+      { id: "swadesh100:breast", meaning: "breast", pos: "n" },
+      { id: "swadesh100:heart", meaning: "heart", pos: "n" },
+      { id: "swadesh100:liver", meaning: "liver", pos: "n" },
+      { id: "swadesh100:drink", meaning: "drink", pos: "v" },
+      { id: "swadesh100:eat", meaning: "eat", pos: "v" },
+      { id: "swadesh100:bite", meaning: "bite", pos: "v" },
+      { id: "swadesh100:see", meaning: "see", pos: "v" },
+      { id: "swadesh100:hear", meaning: "hear", pos: "v" },
+      { id: "swadesh100:know", meaning: "know", pos: "v" },
+      { id: "swadesh100:sleep", meaning: "sleep", pos: "v" },
+      { id: "swadesh100:die", meaning: "die", pos: "v" },
+      { id: "swadesh100:kill", meaning: "kill", pos: "v" },
+      { id: "swadesh100:swim", meaning: "swim", pos: "v" },
+      { id: "swadesh100:fly", meaning: "fly", pos: "v" },
+      { id: "swadesh100:walk", meaning: "walk", pos: "v" },
+      { id: "swadesh100:come", meaning: "come", pos: "v" },
+      { id: "swadesh100:lie", meaning: "lie", pos: "v" },
+      { id: "swadesh100:sit", meaning: "sit", pos: "v" },
+      { id: "swadesh100:stand", meaning: "stand", pos: "v" },
+      { id: "swadesh100:give", meaning: "give", pos: "v" },
+      { id: "swadesh100:say", meaning: "say", pos: "v" },
+      { id: "swadesh100:sun", meaning: "sun", pos: "n" },
+      { id: "swadesh100:moon", meaning: "moon", pos: "n" },
+      { id: "swadesh100:star", meaning: "star", pos: "n" },
+      { id: "swadesh100:water", meaning: "water", pos: "n" },
+      { id: "swadesh100:rain", meaning: "rain", pos: "n" },
+      { id: "swadesh100:stone", meaning: "stone", pos: "n" },
+      { id: "swadesh100:sand", meaning: "sand", pos: "n" },
+      { id: "swadesh100:earth", meaning: "earth", pos: "n" },
+      { id: "swadesh100:cloud", meaning: "cloud", pos: "n" },
+      { id: "swadesh100:smoke", meaning: "smoke", pos: "n" },
+      { id: "swadesh100:fire", meaning: "fire", pos: "n" },
+      { id: "swadesh100:ash", meaning: "ash", pos: "n" },
+      { id: "swadesh100:burn", meaning: "burn", pos: "v" },
+      { id: "swadesh100:road", meaning: "road", pos: "n" },
+      { id: "swadesh100:mountain", meaning: "mountain", pos: "n" },
+      { id: "swadesh100:night", meaning: "night", pos: "n" },
+      { id: "swadesh100:day", meaning: "day", pos: "n" },
+      { id: "swadesh100:year", meaning: "year", pos: "n" },
+      { id: "swadesh100:wind", meaning: "wind", pos: "n" },
+      { id: "swadesh100:forest", meaning: "forest", pos: "n" },
+      { id: "swadesh100:sky", meaning: "sky", pos: "n" },
+      { id: "swadesh100:good", meaning: "good", pos: "adj" },
+      { id: "swadesh100:bad", meaning: "bad", pos: "adj" },
+      { id: "swadesh100:red", meaning: "red", pos: "adj" },
+      { id: "swadesh100:green", meaning: "green", pos: "adj" },
+      { id: "swadesh100:yellow", meaning: "yellow", pos: "adj" },
+      { id: "swadesh100:white", meaning: "white", pos: "adj" },
+      { id: "swadesh100:black", meaning: "black", pos: "adj" },
+      { id: "swadesh100:hot", meaning: "hot", pos: "adj" },
+      { id: "swadesh100:cold", meaning: "cold", pos: "adj" },
+      { id: "swadesh100:full", meaning: "full", pos: "adj" },
+      { id: "swadesh100:new", meaning: "new", pos: "adj" },
+      { id: "swadesh100:name", meaning: "name", pos: "n" }
+    ];
+
+    const els = {
+      langName: document.getElementById("langName"),
+      author: document.getElementById("author"),
+      seed: document.getElementById("seed"),
+      consonants: document.getElementById("consonants"),
+      vowels: document.getElementById("vowels"),
+      templates: document.getElementById("templates"),
+      allowNonListed: document.getElementById("allowNonListed"),
+      onsetClusters: document.getElementById("onsetClusters"),
+      codaClusters: document.getElementById("codaClusters"),
+      forbiddenSeq: document.getElementById("forbiddenSeq"),
+      forbiddenInitial: document.getElementById("forbiddenInitial"),
+      forbiddenFinal: document.getElementById("forbiddenFinal"),
+      minSyll: document.getElementById("minSyll"),
+      maxSyll: document.getElementById("maxSyll"),
+      showRoman: document.getElementById("showRoman"),
+      romanMap: document.getElementById("romanMap"),
+      meaningSet: document.getElementById("meaningSet"),
+      wordCount: document.getElementById("wordCount"),
+      allowHomophones: document.getElementById("allowHomophones"),
+      minDistance: document.getElementById("minDistance"),
+      wordOrder: document.getElementById("wordOrder"),
+      adpositions: document.getElementById("adpositions"),
+      adjPos: document.getElementById("adjPos"),
+      negation: document.getElementById("negation"),
+      pluralSuffix: document.getElementById("pluralSuffix"),
+      pastSuffix: document.getElementById("pastSuffix"),
+      generate: document.getElementById("generate"),
+      saveSpec: document.getElementById("saveSpec"),
+      loadSpec: document.getElementById("loadSpec"),
+      reset: document.getElementById("reset"),
+      downloadJson: document.getElementById("downloadJson"),
+      downloadCsv: document.getElementById("downloadCsv"),
+      lexiconTable: document.getElementById("lexiconTable"),
+      grammarSketch: document.getElementById("grammarSketch"),
+      diagnostics: document.getElementById("diagnostics"),
+      error: document.getElementById("error"),
+      status: document.getElementById("status")
+    };
+
+    const defaultValues = {
+      consonants: "p t k b d ɡ m n ŋ f v s z ʃ ʒ h ɾ r l j w t͡ʃ d͡ʒ",
+      vowels: "i e a o u ə ɛ ɔ ɑ",
+      templates: "V:10\nCV:50\nCVC:30\nCCV:10",
+      onsetClusters: "t͡ʃ r:10\nk w:6\np l:4",
+      codaClusters: "n:12\ns:7\nt:5",
+      forbiddenSeq: "w u\nŋ",
+      forbiddenInitial: "",
+      forbiddenFinal: "",
+      minSyll: 1,
+      maxSyll: 2,
+      wordCount: 100,
+      allowNonListed: false,
+      allowHomophones: false,
+      minDistance: 2,
+      showRoman: false,
+      romanMap: "t͡ʃ = ch\nʃ = sh\nŋ = ng",
+      wordOrder: "SVO",
+      adpositions: "prepositions",
+      adjPos: "after",
+      negation: "particle-before",
+      pluralSuffix: "",
+      pastSuffix: ""
+    };
+
+    function mulberry32(seed) {
+      let t = seed >>> 0;
+      return function () {
+        t += 0x6d2b79f5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function randomSeed() {
+      return Math.floor(Math.random() * 1e9);
+    }
+
+    function parseTokenList(text) {
+      return text
+        .trim()
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+    }
+
+    function splitByKnownTokens(text, knownTokens) {
+      if (!text) return [];
+      const tokens = [];
+      let remaining = text;
+      const sorted = [...new Set(knownTokens)].sort((a, b) => b.length - a.length);
+      while (remaining.length > 0) {
+        let matched = false;
+        for (const token of sorted) {
+          if (remaining.startsWith(token)) {
+            tokens.push(token);
+            remaining = remaining.slice(token.length);
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          return [text];
+        }
+      }
+      return tokens;
+    }
+
+    function parseTokenSequence(text, knownTokens) {
+      if (text.includes(" ")) {
+        return parseTokenList(text);
+      }
+      if (knownTokens && knownTokens.length > 0) {
+        return splitByKnownTokens(text.trim(), knownTokens);
+      }
+      return parseTokenList(text);
+    }
+
+    function parseWeightedTemplates(text) {
+      return text
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [tRaw, wRaw] = line.split(":");
+          const t = tRaw.trim();
+          const w = Number((wRaw || "1").trim());
+          return { t, w: Number.isFinite(w) ? w : 1 };
+        });
+    }
+
+    function parseWeightedClusters(text, knownTokens) {
+      return text
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [seqRaw, wRaw] = line.split(":");
+          const seqTokens = parseTokenSequence(seqRaw.trim(), knownTokens);
+          const w = Number((wRaw || "1").trim());
+          return { seqTokens, w: Number.isFinite(w) ? w : 1 };
+        });
+    }
+
+    function parseForbiddenSequences(text, knownTokens) {
+      return text
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => parseTokenSequence(line, knownTokens));
+    }
+
+    function parseRomanMap(text) {
+      const map = {};
+      text
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .forEach((line) => {
+          const [left, right] = line.split("=");
+          if (!left || right === undefined) return;
+          map[left.trim()] = right.trim();
+        });
+      return map;
+    }
+
+    function weightedPick(items, rng) {
+      const total = items.reduce((sum, item) => sum + (item.w || 0), 0);
+      if (total <= 0) return null;
+      const target = rng() * total;
+      let running = 0;
+      for (const item of items) {
+        running += item.w || 0;
+        if (target <= running) return item;
+      }
+      return items[items.length - 1] || null;
+    }
+
+    function chooseRandom(list, rng) {
+      if (!list.length) return null;
+      const idx = Math.floor(rng() * list.length);
+      return list[idx];
+    }
+
+    function templateSlots(template) {
+      return template.match(/[CV]/g) || [];
+    }
+
+    function fillTemplate(template, inventories, clusters, allowNonListed, rng) {
+      const slots = templateSlots(template);
+      const onsetLength = (() => {
+        let count = 0;
+        for (const slot of slots) {
+          if (slot === "C") count += 1;
+          else break;
+        }
+        return count;
+      })();
+      const codaLength = (() => {
+        let count = 0;
+        for (let i = slots.length - 1; i >= 0; i -= 1) {
+          if (slots[i] === "C") count += 1;
+          else break;
+        }
+        return count;
+      })();
+
+      const tokens = [];
+      let index = 0;
+
+      if (onsetLength > 1) {
+        const onsetCandidates = clusters.onset.filter((c) => c.seqTokens.length === onsetLength);
+        if (onsetCandidates.length > 0) {
+          const pick = weightedPick(onsetCandidates, rng);
+          tokens.push(...pick.seqTokens);
+        } else if (allowNonListed) {
+          for (let i = 0; i < onsetLength; i += 1) {
+            const c = chooseRandom(inventories.C, rng);
+            if (!c) return null;
+            tokens.push(c);
+          }
+        } else {
+          return null;
+        }
+        index += onsetLength;
+      } else if (onsetLength === 1) {
+        const c = chooseRandom(inventories.C, rng);
+        if (!c) return null;
+        tokens.push(c);
+        index += 1;
+      }
+
+      for (; index < slots.length - codaLength; index += 1) {
+        const slot = slots[index];
+        if (slot === "V") {
+          const v = chooseRandom(inventories.V, rng);
+          if (!v) return null;
+          tokens.push(v);
+        } else if (slot === "C") {
+          const c = chooseRandom(inventories.C, rng);
+          if (!c) return null;
+          tokens.push(c);
+        }
+      }
+
+      if (codaLength > 0) {
+        const codaCandidates = clusters.coda.filter((c) => c.seqTokens.length === codaLength);
+        if (codaCandidates.length > 0) {
+          const pick = weightedPick(codaCandidates, rng);
+          tokens.push(...pick.seqTokens);
+        } else if (allowNonListed) {
+          for (let i = 0; i < codaLength; i += 1) {
+            const c = chooseRandom(inventories.C, rng);
+            if (!c) return null;
+            tokens.push(c);
+          }
+        } else {
+          return null;
+        }
+      }
+
+      return tokens;
+    }
+
+    function containsSequence(tokens, seq) {
+      if (!seq.length || seq.length > tokens.length) return false;
+      for (let i = 0; i <= tokens.length - seq.length; i += 1) {
+        let match = true;
+        for (let j = 0; j < seq.length; j += 1) {
+          if (tokens[i + j] !== seq[j]) {
+            match = false;
+            break;
+          }
+        }
+        if (match) return true;
+      }
+      return false;
+    }
+
+    function levenshteinTokens(a, b) {
+      const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+      for (let i = 0; i <= a.length; i += 1) dp[i][0] = i;
+      for (let j = 0; j <= b.length; j += 1) dp[0][j] = j;
+      for (let i = 1; i <= a.length; i += 1) {
+        for (let j = 1; j <= b.length; j += 1) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(
+            dp[i - 1][j] + 1,
+            dp[i][j - 1] + 1,
+            dp[i - 1][j - 1] + cost
+          );
+        }
+      }
+      return dp[a.length][b.length];
+    }
+
+    function generateWord(spec, rng, stats) {
+      const syllableCount =
+        spec.phonology.constraints.min_syllables === spec.phonology.constraints.max_syllables
+          ? spec.phonology.constraints.min_syllables
+          :
+            spec.phonology.constraints.min_syllables +
+            Math.floor(rng() * (spec.phonology.constraints.max_syllables -
+              spec.phonology.constraints.min_syllables + 1));
+
+      const tokens = [];
+      for (let i = 0; i < syllableCount; i += 1) {
+        const templatePick = weightedPick(spec.phonology.syllables, rng);
+        if (!templatePick) return null;
+        const filled = fillTemplate(
+          templatePick.t,
+          { C: spec.phonology.C, V: spec.phonology.V },
+          spec.phonology.clusters,
+          spec.phonology.allow_nonlisted_clusters,
+          rng
+        );
+        if (!filled) {
+          stats.rejects.template += 1;
+          return null;
+        }
+        tokens.push(...filled);
+      }
+      return tokens;
+    }
+
+    function validateWord(tokens, spec, existingForms, stats) {
+      if (!tokens.length) return false;
+      const constraints = spec.phonology.constraints;
+      if (constraints.forbidden_initial.includes(tokens[0])) {
+        stats.rejects.initial += 1;
+        return false;
+      }
+      if (constraints.forbidden_final.includes(tokens[tokens.length - 1])) {
+        stats.rejects.final += 1;
+        return false;
+      }
+      for (const seq of constraints.forbidden_sequences) {
+        if (containsSequence(tokens, seq)) {
+          stats.rejects.sequence += 1;
+          return false;
+        }
+      }
+      if (!spec.lexicon.allow_homophones) {
+        const joined = tokens.join(" ");
+        if (existingForms.has(joined)) {
+          stats.rejects.homophone += 1;
+          return false;
+        }
+      }
+      if (spec.lexicon.min_edit_distance > 0) {
+        for (const existing of existingForms.values()) {
+          if (levenshteinTokens(tokens, existing) < spec.lexicon.min_edit_distance) {
+            stats.rejects.distance += 1;
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function tokensToSpaced(tokens) {
+      return tokens.join(" ");
+    }
+
+    function tokensToJoined(tokens) {
+      return tokens.join("");
+    }
+
+    function buildGrammarSketch(spec, generatedLexicon) {
+      const grammar = spec.grammar;
+      const morphology = spec.morphology;
+      const lines = [];
+      lines.push(
+        `Word order: ${grammar.word_order}. Adpositions: ${grammar.adpositions}. Adjectives: ${grammar.adj_position} noun. Negation: ${grammar.negation}.`
+      );
+      const plural = morphology.plural_suffix_tokens.length
+        ? tokensToSpaced(morphology.plural_suffix_tokens)
+        : "(none)";
+      const past = morphology.past_suffix_tokens.length
+        ? tokensToSpaced(morphology.past_suffix_tokens)
+        : "(none)";
+      lines.push(`Plural suffix: ${plural}. Past tense suffix: ${past}.`);
+
+      if (morphology.plural_suffix_tokens.length || morphology.past_suffix_tokens.length) {
+        const nouns = generatedLexicon.filter((entry) => entry.pos === "n").slice(0, 5);
+        const verbs = generatedLexicon.filter((entry) => entry.pos === "v").slice(0, 5);
+        if (nouns.length) {
+          lines.push("Plural noun examples:");
+          nouns.forEach((entry) => {
+            const pluralTokens = entry.ipa_tokens.concat(morphology.plural_suffix_tokens);
+            lines.push(`- ${entry.meaning}: ${tokensToSpaced(entry.ipa_tokens)} → ${tokensToSpaced(pluralTokens)}`);
+          });
+        }
+        if (verbs.length) {
+          lines.push("Past tense verb examples:");
+          verbs.forEach((entry) => {
+            const pastTokens = entry.ipa_tokens.concat(morphology.past_suffix_tokens);
+            lines.push(`- ${entry.meaning}: ${tokensToSpaced(entry.ipa_tokens)} → ${tokensToSpaced(pastTokens)}`);
+          });
+        }
+      }
+
+      return lines.join("\n");
+    }
+
+    function buildSpec() {
+      const seedValue = Number(els.seed.value || randomSeed());
+      els.seed.value = seedValue;
+
+      const C = parseTokenList(els.consonants.value);
+      const V = parseTokenList(els.vowels.value);
+      const knownTokens = C.concat(V);
+
+      return {
+        meta: {
+          name: els.langName.value.trim(),
+          author: els.author.value.trim(),
+          seed: seedValue
+        },
+        phonology: {
+          C,
+          V,
+          syllables: parseWeightedTemplates(els.templates.value),
+          clusters: {
+            onset: parseWeightedClusters(els.onsetClusters.value, knownTokens),
+            coda: parseWeightedClusters(els.codaClusters.value, knownTokens)
+          },
+          allow_nonlisted_clusters: els.allowNonListed.checked,
+          constraints: {
+            forbidden_sequences: parseForbiddenSequences(els.forbiddenSeq.value, knownTokens),
+            forbidden_initial: parseTokenList(els.forbiddenInitial.value),
+            forbidden_final: parseTokenList(els.forbiddenFinal.value),
+            min_syllables: Number(els.minSyll.value) || 1,
+            max_syllables: Number(els.maxSyll.value) || 1
+          },
+          orthography: parseRomanMap(els.romanMap.value)
+        },
+        lexicon: {
+          meaning_set: els.meaningSet.value,
+          count: Number(els.wordCount.value) || 100,
+          allow_homophones: els.allowHomophones.checked,
+          min_edit_distance: Number(els.minDistance.value) || 0
+        },
+        grammar: {
+          word_order: els.wordOrder.value,
+          adpositions: els.adpositions.value,
+          adj_position: els.adjPos.value,
+          negation: els.negation.value
+        },
+        morphology: {
+          plural_suffix_tokens: parseTokenList(els.pluralSuffix.value),
+          past_suffix_tokens: parseTokenList(els.pastSuffix.value)
+        }
+      };
+    }
+
+    function generateLexicon(spec) {
+      const rng = mulberry32(spec.meta.seed);
+      const entries = [];
+      const existingForms = new Map();
+      const stats = {
+        attempts: 0,
+        rejects: {
+          template: 0,
+          initial: 0,
+          final: 0,
+          sequence: 0,
+          homophone: 0,
+          distance: 0
+        }
+      };
+      const warnings = [];
+      const list = swadesh100.slice(0, spec.lexicon.count);
+      const maxAttempts = spec.lexicon.count * 200;
+
+      for (const meaning of list) {
+        let candidate = null;
+        let attempts = 0;
+        while (attempts < 2000) {
+          attempts += 1;
+          stats.attempts += 1;
+          const word = generateWord(spec, rng, stats);
+          if (!word) continue;
+          if (!validateWord(word, spec, existingForms, stats)) continue;
+          candidate = word;
+          break;
+        }
+        if (!candidate) {
+          warnings.push(`Failed to generate word for ${meaning.meaning} after ${attempts} attempts.`);
+          break;
+        }
+        const key = candidate.join(" ");
+        existingForms.set(key, candidate);
+        entries.push({
+          meaning_id: meaning.id,
+          meaning: meaning.meaning,
+          pos: meaning.pos,
+          ipa_tokens: candidate,
+          ipa_spaced: tokensToSpaced(candidate),
+          ipa_joined: tokensToJoined(candidate)
+        });
+        if (stats.attempts > maxAttempts) {
+          warnings.push("Generation attempts exceeded safe limit. Try loosening constraints or reducing min edit distance.");
+          break;
+        }
+      }
+
+      return { entries, stats, warnings };
+    }
+
+    function buildRomanization(tokens, map) {
+      return tokens.map((t) => map[t] || t).join("");
+    }
+
+    function renderTable(entries, showRoman, romanMap) {
+      els.lexiconTable.innerHTML = "";
+      const header = document.createElement("tr");
+      const columns = ["Meaning", "POS", "IPA (spaced / joined)"];
+      if (showRoman) columns.push("Romanization");
+      header.innerHTML = columns.map((c) => `<th>${c}</th>`).join("");
+      els.lexiconTable.appendChild(header);
+
+      entries.forEach((entry) => {
+        const row = document.createElement("tr");
+        const ipaCell = `<div class="ipa">${entry.ipa_spaced}</div><div class="ipa">${entry.ipa_joined}</div>`;
+        const cells = [entry.meaning, entry.pos, ipaCell];
+        if (showRoman) {
+          cells.push(buildRomanization(entry.ipa_tokens, romanMap));
+        }
+        row.innerHTML = cells.map((cell) => `<td>${cell}</td>`).join("");
+        els.lexiconTable.appendChild(row);
+      });
+    }
+
+    function downloadFile(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function buildCsv(entries, showRoman, romanMap) {
+      const headers = ["meaning", "pos", "ipa_joined", "ipa_spaced"];
+      if (showRoman) headers.push("romanization");
+      const rows = [headers.join(",")];
+      entries.forEach((entry) => {
+        const fields = [
+          entry.meaning,
+          entry.pos,
+          entry.ipa_joined,
+          entry.ipa_spaced
+        ];
+        if (showRoman) fields.push(buildRomanization(entry.ipa_tokens, romanMap));
+        rows.push(fields.map((f) => `"${String(f).replace(/"/g, '""')}"`).join(","));
+      });
+      return rows.join("\n");
+    }
+
+    function setDefaults() {
+      els.consonants.value = defaultValues.consonants;
+      els.vowels.value = defaultValues.vowels;
+      els.templates.value = defaultValues.templates;
+      els.onsetClusters.value = defaultValues.onsetClusters;
+      els.codaClusters.value = defaultValues.codaClusters;
+      els.forbiddenSeq.value = defaultValues.forbiddenSeq;
+      els.forbiddenInitial.value = defaultValues.forbiddenInitial;
+      els.forbiddenFinal.value = defaultValues.forbiddenFinal;
+      els.minSyll.value = defaultValues.minSyll;
+      els.maxSyll.value = defaultValues.maxSyll;
+      els.wordCount.value = defaultValues.wordCount;
+      els.allowNonListed.checked = defaultValues.allowNonListed;
+      els.allowHomophones.checked = defaultValues.allowHomophones;
+      els.minDistance.value = defaultValues.minDistance;
+      els.showRoman.checked = defaultValues.showRoman;
+      els.romanMap.value = defaultValues.romanMap;
+      els.wordOrder.value = defaultValues.wordOrder;
+      els.adpositions.value = defaultValues.adpositions;
+      els.adjPos.value = defaultValues.adjPos;
+      els.negation.value = defaultValues.negation;
+      els.pluralSuffix.value = defaultValues.pluralSuffix;
+      els.pastSuffix.value = defaultValues.pastSuffix;
+      if (!els.seed.value) {
+        els.seed.value = randomSeed();
+      }
+    }
+
+    function showError(message) {
+      els.error.textContent = message;
+    }
+
+    function clearError() {
+      els.error.textContent = "";
+    }
+
+    function handleGenerate() {
+      clearError();
+      const spec = buildSpec();
+      if (!spec.phonology.C.length || !spec.phonology.V.length) {
+        showError("Please provide at least one consonant and one vowel token.");
+        return;
+      }
+      if (!spec.phonology.syllables.length) {
+        showError("Please provide at least one syllable template.");
+        return;
+      }
+      if (spec.phonology.constraints.min_syllables > spec.phonology.constraints.max_syllables) {
+        showError("Min syllables cannot exceed max syllables.");
+        return;
+      }
+      const { entries, stats, warnings } = generateLexicon(spec);
+      if (entries.length < spec.lexicon.count) {
+        showError(
+          "Generation could not complete. Try loosening constraints (min edit distance, forbidden sequences, max syllables, or cluster requirements)."
+        );
+      }
+      const romanMap = spec.phonology.orthography;
+      renderTable(entries, els.showRoman.checked, romanMap);
+      const grammarSketchText = buildGrammarSketch(spec, entries);
+      els.grammarSketch.textContent = grammarSketchText;
+      const diagnostics = [
+        `Seed: ${spec.meta.seed}`,
+        `Attempts: ${stats.attempts}`,
+        `Rejects: ${JSON.stringify(stats.rejects)}`,
+        warnings.length ? `Warnings: ${warnings.join(" ")}` : "Warnings: none"
+      ].join("\n");
+      els.diagnostics.textContent = diagnostics;
+
+      window._latestSpec = spec;
+      window._latestGenerated = {
+        lexicon: entries.map((entry) => ({
+          ...entry,
+          romanization: els.showRoman.checked ? buildRomanization(entry.ipa_tokens, romanMap) : undefined
+        })),
+        grammar_sketch: grammarSketchText,
+        stats
+      };
+    }
+
+    els.generate.addEventListener("click", handleGenerate);
+
+    els.saveSpec.addEventListener("click", () => {
+      const spec = buildSpec();
+      localStorage.setItem("conlangSpec", JSON.stringify(spec));
+      els.status.textContent = "Spec saved to localStorage.";
+      els.status.className = "success";
+    });
+
+    els.loadSpec.addEventListener("click", () => {
+      const raw = localStorage.getItem("conlangSpec");
+      if (!raw) {
+        els.status.textContent = "No saved spec found.";
+        els.status.className = "hint";
+        return;
+      }
+      const spec = JSON.parse(raw);
+      els.langName.value = spec.meta?.name || "";
+      els.author.value = spec.meta?.author || "";
+      els.seed.value = spec.meta?.seed || randomSeed();
+      els.consonants.value = (spec.phonology?.C || []).join(" ");
+      els.vowels.value = (spec.phonology?.V || []).join(" ");
+      els.templates.value = (spec.phonology?.syllables || [])
+        .map((s) => `${s.t}:${s.w}`)
+        .join("\n");
+      els.onsetClusters.value = (spec.phonology?.clusters?.onset || [])
+        .map((c) => `${c.seqTokens.join(" ")}:${c.w}`)
+        .join("\n");
+      els.codaClusters.value = (spec.phonology?.clusters?.coda || [])
+        .map((c) => `${c.seqTokens.join(" ")}:${c.w}`)
+        .join("\n");
+      els.allowNonListed.checked = !!spec.phonology?.allow_nonlisted_clusters;
+      els.forbiddenSeq.value = (spec.phonology?.constraints?.forbidden_sequences || [])
+        .map((seq) => seq.join(" "))
+        .join("\n");
+      els.forbiddenInitial.value = (spec.phonology?.constraints?.forbidden_initial || []).join(" ");
+      els.forbiddenFinal.value = (spec.phonology?.constraints?.forbidden_final || []).join(" ");
+      els.minSyll.value = spec.phonology?.constraints?.min_syllables || 1;
+      els.maxSyll.value = spec.phonology?.constraints?.max_syllables || 1;
+      els.romanMap.value = Object.entries(spec.phonology?.orthography || {})
+        .map(([k, v]) => `${k} = ${v}`)
+        .join("\n");
+      els.meaningSet.value = spec.lexicon?.meaning_set || "swadesh100";
+      els.wordCount.value = spec.lexicon?.count || 100;
+      els.allowHomophones.checked = !!spec.lexicon?.allow_homophones;
+      els.minDistance.value = spec.lexicon?.min_edit_distance || 0;
+      els.wordOrder.value = spec.grammar?.word_order || "SVO";
+      els.adpositions.value = spec.grammar?.adpositions || "prepositions";
+      els.adjPos.value = spec.grammar?.adj_position || "after";
+      els.negation.value = spec.grammar?.negation || "particle-before";
+      els.pluralSuffix.value = (spec.morphology?.plural_suffix_tokens || []).join(" ");
+      els.pastSuffix.value = (spec.morphology?.past_suffix_tokens || []).join(" ");
+      els.status.textContent = "Spec loaded.";
+      els.status.className = "success";
+    });
+
+    els.reset.addEventListener("click", () => {
+      setDefaults();
+      els.status.textContent = "Defaults restored.";
+      els.status.className = "hint";
+    });
+
+    els.downloadJson.addEventListener("click", () => {
+      if (!window._latestSpec || !window._latestGenerated) {
+        showError("Generate a lexicon before downloading.");
+        return;
+      }
+      const payload = {
+        spec: window._latestSpec,
+        generated: window._latestGenerated
+      };
+      downloadFile("conlang_lexicon.json", JSON.stringify(payload, null, 2), "application/json");
+    });
+
+    els.downloadCsv.addEventListener("click", () => {
+      if (!window._latestSpec || !window._latestGenerated) {
+        showError("Generate a lexicon before downloading.");
+        return;
+      }
+      const romanMap = window._latestSpec.phonology.orthography;
+      const csv = buildCsv(window._latestGenerated.lexicon, els.showRoman.checked, romanMap);
+      downloadFile("conlang_lexicon.csv", csv, "text/csv");
+    });
+
+    setDefaults();
+  </script>
+</body>
+</html>
