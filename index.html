@@ -349,6 +349,19 @@
         </div>
       </fieldset>
 
+      <fieldset class="mono-input">
+        <legend>Import JSON (inputs/phoneme inventory)</legend>
+        <label for="jsonFile">Upload JSON file</label>
+        <input id="jsonFile" type="file" accept="application/json" />
+        <label for="jsonImport">Or paste JSON</label>
+        <textarea id="jsonImport" placeholder='{"phonology":{"phoneme_inventory":{"consonants":[],"vowels":[]}}}'></textarea>
+        <div class="controls">
+          <button id="applyJson" class="secondary" type="button">Apply JSON</button>
+          <button id="clearJson" class="ghost" type="button">Clear JSON</button>
+        </div>
+        <div class="hint">Loads the JSON format described in the docs (separate from the localStorage preset).</div>
+      </fieldset>
+
       <div class="controls">
         <button id="generate">Generate</button>
         <button id="saveSpec" class="secondary">Save spec</button>
@@ -508,6 +521,10 @@
       negation: document.getElementById("negation"),
       pluralSuffix: document.getElementById("pluralSuffix"),
       pastSuffix: document.getElementById("pastSuffix"),
+      jsonFile: document.getElementById("jsonFile"),
+      jsonImport: document.getElementById("jsonImport"),
+      applyJson: document.getElementById("applyJson"),
+      clearJson: document.getElementById("clearJson"),
       generate: document.getElementById("generate"),
       saveSpec: document.getElementById("saveSpec"),
       loadSpec: document.getElementById("loadSpec"),
@@ -1077,6 +1094,11 @@
       els.error.textContent = message;
     }
 
+    function showStatus(message, type = "hint") {
+      els.status.textContent = message;
+      els.status.className = type;
+    }
+
     function clearError() {
       els.error.textContent = "";
     }
@@ -1130,15 +1152,13 @@
     els.saveSpec.addEventListener("click", () => {
       const spec = buildSpec();
       localStorage.setItem("conlangSpec", JSON.stringify(spec));
-      els.status.textContent = "Spec saved to localStorage.";
-      els.status.className = "success";
+      showStatus("Spec saved to localStorage.", "success");
     });
 
     els.loadSpec.addEventListener("click", () => {
       const raw = localStorage.getItem("conlangSpec");
       if (!raw) {
-        els.status.textContent = "No saved spec found.";
-        els.status.className = "hint";
+        showStatus("No saved spec found.");
         return;
       }
       const spec = JSON.parse(raw);
@@ -1177,14 +1197,115 @@
       els.negation.value = spec.grammar?.negation || "particle-before";
       els.pluralSuffix.value = (spec.morphology?.plural_suffix_tokens || []).join(" ");
       els.pastSuffix.value = (spec.morphology?.past_suffix_tokens || []).join(" ");
-      els.status.textContent = "Spec loaded.";
-      els.status.className = "success";
+      showStatus("Spec loaded.", "success");
     });
 
     els.reset.addEventListener("click", () => {
       setDefaults();
-      els.status.textContent = "Defaults restored.";
-      els.status.className = "hint";
+      showStatus("Defaults restored.");
+    });
+
+    function applyImportedJson(raw) {
+      clearError();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (err) {
+        showError("Invalid JSON: unable to parse.");
+        return;
+      }
+
+      const phonology = data.phonology || {};
+      const phonemeInventory = phonology.phoneme_inventory || {};
+      const syllables = phonology.syllable_templates || {};
+      const clusters = phonology.clusters || {};
+      const constraints = phonology.constraints || {};
+      const orthography = data.orthography || {};
+      const lexicon = data.lexicon_generation || {};
+      const grammar = data.grammar_morphology_lite || {};
+
+      els.consonants.value = (phonemeInventory.consonants || []).join(" ");
+      els.vowels.value = (phonemeInventory.vowels || []).join(" ");
+
+      const templateLines = Object.entries(syllables.weighted || {})
+        .map(([template, weight]) => `${template}:${weight}`)
+        .join("\n");
+      els.templates.value = templateLines;
+      els.allowNonListed.checked = !!syllables.allow_non_listed_clusters;
+
+      const onsetLines = Object.entries((clusters.onset || {}).weighted || {})
+        .map(([cluster, weight]) => `${cluster}:${weight}`)
+        .join("\n");
+      const codaLines = Object.entries((clusters.coda || {}).weighted || {})
+        .map(([cluster, weight]) => `${cluster}:${weight}`)
+        .join("\n");
+      els.onsetClusters.value = onsetLines;
+      els.codaClusters.value = codaLines;
+
+      els.forbiddenSeq.value = (constraints.forbidden_sequences || []).join("\n");
+      els.forbiddenInitial.value = (constraints.forbidden_word_initial_tokens || []).join(" ");
+      els.forbiddenFinal.value = (constraints.forbidden_word_final_tokens || []).join(" ");
+      els.minSyll.value = constraints.min_syllables ?? 1;
+      els.maxSyll.value = constraints.max_syllables ?? 1;
+
+      els.showRoman.checked = !!orthography.show_romanization;
+      els.romanMap.value = Object.entries(orthography.mapping || {})
+        .map(([k, v]) => `${k} = ${v}`)
+        .join("\n");
+
+      els.wordCount.value = lexicon.number_of_words ?? els.wordCount.value;
+      els.minDistance.value = lexicon.minimum_edit_distance ?? els.minDistance.value;
+      els.allowHomophones.checked = !!lexicon.allow_homophones;
+      if (lexicon.meaning_list && els.meaningSet.querySelector(`option[value="${lexicon.meaning_list}"]`)) {
+        els.meaningSet.value = lexicon.meaning_list;
+      }
+
+      if (grammar.word_order && els.wordOrder.querySelector(`option[value="${grammar.word_order}"]`)) {
+        els.wordOrder.value = grammar.word_order;
+      }
+      if (grammar.adpositions && els.adpositions.querySelector(`option[value="${grammar.adpositions}"]`)) {
+        els.adpositions.value = grammar.adpositions;
+      }
+      if (grammar.adjective_position && els.adjPos.querySelector(`option[value="${grammar.adjective_position}"]`)) {
+        els.adjPos.value = grammar.adjective_position;
+      }
+      if (grammar.negation_strategy && els.negation.querySelector(`option[value="${grammar.negation_strategy}"]`)) {
+        els.negation.value = grammar.negation_strategy;
+      }
+      els.pluralSuffix.value = (grammar.plural_suffix_tokens || []).join(" ");
+      els.pastSuffix.value = (grammar.past_tense_suffix_tokens || []).join(" ");
+
+      showStatus("JSON inputs applied to the form.", "success");
+    }
+
+    els.applyJson.addEventListener("click", () => {
+      if (!els.jsonImport.value.trim()) {
+        showError("Paste JSON or upload a file before applying.");
+        return;
+      }
+      applyImportedJson(els.jsonImport.value);
+    });
+
+    els.clearJson.addEventListener("click", () => {
+      els.jsonImport.value = "";
+      if (els.jsonFile) {
+        els.jsonFile.value = "";
+      }
+      showStatus("JSON input cleared.");
+    });
+
+    els.jsonFile.addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        els.jsonImport.value = String(reader.result || "");
+        showStatus("JSON file loaded. Review and click Apply JSON.", "success");
+      };
+      reader.onerror = () => {
+        showError("Unable to read the selected JSON file.");
+      };
+      reader.readAsText(file);
     });
 
     els.downloadJson.addEventListener("click", () => {
