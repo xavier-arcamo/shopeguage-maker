@@ -183,7 +183,7 @@
 <body>
   <header>
     <h1>Conlang Accelerator (Offline)</h1>
-    <p>Define IPA inventories, phonotactics, constraints, and generate a Swadesh-100 lexicon with deterministic output.</p>
+    <p>Define IPA inventories, phonotactics, constraints, and generate a Swadesh-100 or custom lexicon with deterministic output.</p>
   </header>
   <main>
     <section class="panel">
@@ -277,6 +277,7 @@
             <label for="meaningSet">Meaning list</label>
             <select id="meaningSet">
               <option value="swadesh100">Swadesh 100</option>
+              <option value="custom">Custom JSON list</option>
             </select>
           </div>
           <div>
@@ -293,6 +294,19 @@
             <label for="minDistance">Minimum edit distance</label>
             <input id="minDistance" type="number" min="0" max="10" value="2" />
           </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="mono-input">
+        <legend>Custom vocabulary list (JSON)</legend>
+        <label for="vocabFile">Upload vocabulary JSON file</label>
+        <input id="vocabFile" type="file" accept="application/json" />
+        <label for="vocabImport">Or paste vocabulary JSON</label>
+        <textarea id="vocabImport" placeholder='{"category":["term_one","term_two"]}'></textarea>
+        <div class="hint">Structure: {"category": ["term", "term"]}. Categories become POS labels.</div>
+        <div class="controls">
+          <button id="applyVocab" class="secondary" type="button">Use Custom Vocabulary</button>
+          <button id="clearVocab" class="ghost" type="button">Clear Vocabulary</button>
         </div>
       </fieldset>
 
@@ -515,6 +529,10 @@
       wordCount: document.getElementById("wordCount"),
       allowHomophones: document.getElementById("allowHomophones"),
       minDistance: document.getElementById("minDistance"),
+      vocabFile: document.getElementById("vocabFile"),
+      vocabImport: document.getElementById("vocabImport"),
+      applyVocab: document.getElementById("applyVocab"),
+      clearVocab: document.getElementById("clearVocab"),
       wordOrder: document.getElementById("wordOrder"),
       adpositions: document.getElementById("adpositions"),
       adjPos: document.getElementById("adjPos"),
@@ -561,6 +579,11 @@
       negation: "particle-before",
       pluralSuffix: "",
       pastSuffix: ""
+    };
+
+    const customMeaningState = {
+      list: [],
+      source: null
     };
 
     function mulberry32(seed) {
@@ -940,7 +963,8 @@
           meaning_set: els.meaningSet.value,
           count: Number(els.wordCount.value) || 100,
           allow_homophones: els.allowHomophones.checked,
-          min_edit_distance: Number(els.minDistance.value) || 0
+          min_edit_distance: Number(els.minDistance.value) || 0,
+          custom_meaning_list: customMeaningState.source || undefined
         },
         grammar: {
           word_order: els.wordOrder.value,
@@ -955,7 +979,7 @@
       };
     }
 
-    function generateLexicon(spec) {
+    function generateLexicon(spec, meaningList) {
       const rng = mulberry32(spec.meta.seed);
       const entries = [];
       const existingForms = new Map();
@@ -971,7 +995,7 @@
         }
       };
       const warnings = [];
-      const list = swadesh100.slice(0, spec.lexicon.count);
+      const list = meaningList.slice(0, spec.lexicon.count);
       const maxAttempts = spec.lexicon.count * 200;
 
       for (const meaning of list) {
@@ -1085,6 +1109,14 @@
       els.negation.value = defaultValues.negation;
       els.pluralSuffix.value = defaultValues.pluralSuffix;
       els.pastSuffix.value = defaultValues.pastSuffix;
+      els.meaningSet.value = "swadesh100";
+      els.wordCount.disabled = false;
+      els.vocabImport.value = "";
+      if (els.vocabFile) {
+        els.vocabFile.value = "";
+      }
+      customMeaningState.list = [];
+      customMeaningState.source = null;
       if (!els.seed.value) {
         els.seed.value = randomSeed();
       }
@@ -1103,9 +1135,91 @@
       els.error.textContent = "";
     }
 
+    function slugifyMeaning(text) {
+      const cleaned = text.trim().toLowerCase().replace(/\s+/g, "_");
+      return encodeURIComponent(cleaned);
+    }
+
+    function buildCustomMeaningEntries(source) {
+      if (!source || typeof source !== "object" || Array.isArray(source)) {
+        throw new Error("Custom vocabulary must be a JSON object of arrays.");
+      }
+      const entries = [];
+      const counts = new Map();
+      Object.entries(source).forEach(([category, terms]) => {
+        if (!Array.isArray(terms)) {
+          throw new Error(`Category "${category}" must be an array of terms.`);
+        }
+        terms.forEach((term) => {
+          if (typeof term !== "string" || !term.trim()) {
+            throw new Error(`Invalid term in category "${category}".`);
+          }
+          const meaning = term.trim();
+          const pos = category.trim() || "custom";
+          const baseId = `custom:${slugifyMeaning(category || "category")}:${slugifyMeaning(meaning)}`;
+          const count = counts.get(baseId) || 0;
+          const id = count ? `${baseId}-${count + 1}` : baseId;
+          counts.set(baseId, count + 1);
+          entries.push({ id, meaning, pos });
+        });
+      });
+      return entries;
+    }
+
+    function applyCustomVocabulary(raw) {
+      clearError();
+      let source;
+      try {
+        source = JSON.parse(raw);
+      } catch (err) {
+        showError("Invalid custom vocabulary JSON.");
+        return;
+      }
+      let entries;
+      try {
+        entries = buildCustomMeaningEntries(source);
+      } catch (err) {
+        showError(err.message);
+        return;
+      }
+      if (!entries.length) {
+        showError("Custom vocabulary is empty.");
+        return;
+      }
+      customMeaningState.list = entries;
+      customMeaningState.source = source;
+      els.meaningSet.value = "custom";
+      els.wordCount.value = entries.length;
+      els.wordCount.disabled = true;
+      showStatus(`Loaded ${entries.length} custom meanings.`, "success");
+    }
+
+    function getMeaningList(spec) {
+      if (spec.lexicon.meaning_set === "custom") {
+        return customMeaningState.list;
+      }
+      return swadesh100;
+    }
+
+    function updateMeaningSetUI() {
+      if (els.meaningSet.value === "custom") {
+        if (customMeaningState.list.length) {
+          els.wordCount.value = customMeaningState.list.length;
+        }
+        els.wordCount.disabled = true;
+      } else {
+        els.wordCount.disabled = false;
+      }
+    }
+
     function handleGenerate() {
       clearError();
       const spec = buildSpec();
+      const meaningList = getMeaningList(spec);
+      if (!meaningList.length) {
+        showError("Load a custom vocabulary list before generating.");
+        return;
+      }
       if (!spec.phonology.C.length || !spec.phonology.V.length) {
         showError("Please provide at least one consonant and one vowel token.");
         return;
@@ -1118,7 +1232,11 @@
         showError("Min syllables cannot exceed max syllables.");
         return;
       }
-      const { entries, stats, warnings } = generateLexicon(spec);
+      spec.lexicon.count = Math.min(spec.lexicon.count, meaningList.length);
+      if (spec.lexicon.meaning_set === "custom") {
+        els.wordCount.value = spec.lexicon.count;
+      }
+      const { entries, stats, warnings } = generateLexicon(spec, meaningList);
       if (entries.length < spec.lexicon.count) {
         showError(
           "Generation could not complete. Try loosening constraints (min edit distance, forbidden sequences, max syllables, or cluster requirements)."
@@ -1191,18 +1309,67 @@
       els.wordCount.value = spec.lexicon?.count || 100;
       els.allowHomophones.checked = !!spec.lexicon?.allow_homophones;
       els.minDistance.value = spec.lexicon?.min_edit_distance || 0;
+      if (spec.lexicon?.custom_meaning_list) {
+        const source = spec.lexicon.custom_meaning_list;
+        try {
+          const entries = buildCustomMeaningEntries(source);
+          customMeaningState.list = entries;
+          customMeaningState.source = source;
+          els.vocabImport.value = JSON.stringify(source, null, 2);
+          els.meaningSet.value = "custom";
+        } catch (err) {
+          showError("Saved custom meaning list is invalid.");
+        }
+      }
       els.wordOrder.value = spec.grammar?.word_order || "SVO";
       els.adpositions.value = spec.grammar?.adpositions || "prepositions";
       els.adjPos.value = spec.grammar?.adj_position || "after";
       els.negation.value = spec.grammar?.negation || "particle-before";
       els.pluralSuffix.value = (spec.morphology?.plural_suffix_tokens || []).join(" ");
       els.pastSuffix.value = (spec.morphology?.past_suffix_tokens || []).join(" ");
+      updateMeaningSetUI();
       showStatus("Spec loaded.", "success");
     });
 
     els.reset.addEventListener("click", () => {
       setDefaults();
       showStatus("Defaults restored.");
+    });
+
+    els.meaningSet.addEventListener("change", updateMeaningSetUI);
+
+    els.applyVocab.addEventListener("click", () => {
+      if (!els.vocabImport.value.trim()) {
+        showError("Paste vocabulary JSON or upload a file before applying.");
+        return;
+      }
+      applyCustomVocabulary(els.vocabImport.value);
+      updateMeaningSetUI();
+    });
+
+    els.clearVocab.addEventListener("click", () => {
+      els.vocabImport.value = "";
+      if (els.vocabFile) {
+        els.vocabFile.value = "";
+      }
+      customMeaningState.list = [];
+      customMeaningState.source = null;
+      updateMeaningSetUI();
+      showStatus("Custom vocabulary cleared.");
+    });
+
+    els.vocabFile.addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        els.vocabImport.value = String(reader.result || "");
+        showStatus("Vocabulary JSON loaded. Review and click Use Custom Vocabulary.", "success");
+      };
+      reader.onerror = () => {
+        showError("Unable to read the selected vocabulary file.");
+      };
+      reader.readAsText(file);
     });
 
     function applyImportedJson(raw) {
@@ -1259,6 +1426,18 @@
       if (lexicon.meaning_list && els.meaningSet.querySelector(`option[value="${lexicon.meaning_list}"]`)) {
         els.meaningSet.value = lexicon.meaning_list;
       }
+      if (lexicon.custom_meaning_list) {
+        const source = lexicon.custom_meaning_list;
+        try {
+          const entries = buildCustomMeaningEntries(source);
+          customMeaningState.list = entries;
+          customMeaningState.source = source;
+          els.vocabImport.value = JSON.stringify(source, null, 2);
+          els.meaningSet.value = "custom";
+        } catch (err) {
+          showError("Custom meaning list in JSON is invalid.");
+        }
+      }
 
       if (grammar.word_order && els.wordOrder.querySelector(`option[value="${grammar.word_order}"]`)) {
         els.wordOrder.value = grammar.word_order;
@@ -1275,6 +1454,7 @@
       els.pluralSuffix.value = (grammar.plural_suffix_tokens || []).join(" ");
       els.pastSuffix.value = (grammar.past_tense_suffix_tokens || []).join(" ");
 
+      updateMeaningSetUI();
       showStatus("JSON inputs applied to the form.", "success");
     }
 
@@ -1331,6 +1511,7 @@
     });
 
     setDefaults();
+    updateMeaningSetUI();
   </script>
 </body>
 </html>
